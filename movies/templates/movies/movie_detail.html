@@ -1,0 +1,6 @@
+{{ object.name }}
+<form action="{% url 'rate' object.pk %}" method="POST">
+    {% csrf_token %}
+    <input name="rating">
+    <button>Rate</button>
+</form>
