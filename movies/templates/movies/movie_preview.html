@@ -1,0 +1,33 @@
+<style>
+    a {
+        color: black;
+        text-decoration: none;
+    }
+
+    a:hover {
+        color: black;
+        text-decoration: none;
+    }
+
+    a:visited {
+        color: black;
+        text-decoration: none;
+    }
+</style>
+<a class="mb-3" href="{% url 'detail' movie.id %}">
+    <div class="card" style="cursor: pointer;">
+        <div class="card-body">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-2">
+                        <img class="w-100 rounded" src="https://image.tmdb.org/t/p/w600_and_h900_bestv2{{ movie.info.poster_path }}">
+                    </div>
+                    <div class="col">
+                        <h5 class="card-title">{{ movie.info.title }}</h5>
+                        <p class="card-text">{{ movie.info.overview }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</a>

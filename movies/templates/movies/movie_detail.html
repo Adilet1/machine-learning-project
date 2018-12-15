@@ -1,6 +1,130 @@
-{{ object.name }}
-<form action="{% url 'rate' object.pk %}" method="POST">
-    {% csrf_token %}
-    <input name="rating">
-    <button>Rate</button>
-</form>
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}
+    {{ object.name }}
+{% endblock %}
+{% block content %}
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-md-4">
+                <img class="w-100 rounded" src="https://image.tmdb.org/t/p/w600_and_h900_bestv2{{ info.poster_path }}">
+            </div>
+            <div class="col">
+                <form action="{% url 'rate' object.id %}" method="POST">
+                    {% csrf_token %}
+                    <h2>{{ info.title }}</h2>
+                    {% if info.tagline %}
+                        <blockquote class="blockquote my-0">
+                            <footer class="blockquote-footer"><cite>{{ info.tagline }}</cite></footer>
+                        </blockquote>
+                    {% endif %}
+                    <div class="clearfix">
+                        <style>
+                            @import url(//stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css);
+
+                            fieldset, label {
+                                margin: 0; padding: 0;
+                            }
+
+                            .rating { 
+                            border: none;
+                                float: left;
+                            }
+
+                            .rating > input {
+                                display: none;
+                            } 
+
+                            .rating > label:before { 
+                                margin: 5px;
+                                font-size: 1.25em;
+                                font-family: FontAwesome;
+                                display: inline-block;
+                                content: "\f005";
+                            }
+
+                            .rating > .half:before { 
+                                content: "\f089";
+                                position: absolute;
+                            }
+
+                            .rating > label { 
+                                color: #ddd; 
+                                float: right; 
+                            }
+
+                            .rating > input:checked ~ label,
+                            .rating:not(:checked) > label:hover,
+                            .rating:not(:checked) > label:hover ~ label {
+                                color: #FFD700; 
+                            }
+
+                            .rating > input:checked + label:hover,
+                            .rating > input:checked ~ label:hover,
+                            .rating > label:hover ~ input:checked ~ label,
+                            .rating > input:checked ~ label:hover ~ label { 
+                                color: #FFED85;
+                            }
+                        </style>
+                        <fieldset class="rating">
+                            <input type="radio" id="star5" name="rating" value="5" {% if rating == 5 %}checked{% endif %}/><label class="full" for="star5" title="5 stars"></label>
+                            <input type="radio" id="star4" name="rating" value="4" {% if rating == 4 %}checked{% endif %}/><label class="full" for="star4" title="4 stars"></label>
+                            <input type="radio" id="star3" name="rating" value="3" {% if rating == 3 %}checked{% endif %}/><label class="full" for="star3" title="3 stars"></label>
+                            <input type="radio" id="star2" name="rating" value="2" {% if rating == 2 %}checked{% endif %}/><label class="full" for="star2" title="2 stars"></label>
+                            <input type="radio" id="star1" name="rating" value="1" {% if rating == 1 %}checked{% endif %}/><label class="full" for="star1" title="1 star"></label>
+                        </fieldset>
+                    </div>
+                    <h4>Overview</h4>
+                    <p>{{ info.overview }}</p>
+                    <h4>Release date</h4>
+                    <p>{{ info.release_date }}</p>
+                    <h4>Genres</h4>
+                    <h4 class="mb-4">
+                        {% for genre in info.genres %}
+                            <span class="badge badge-secondary">{{ genre.name }}</span>
+                        {% endfor %}
+                    </h4>
+                    <h4>Runtime</h4>
+                    <p>{{ info.runtime }} minutes</p>
+                    <h4>Budget</h4>
+                    <p>${{ info.budget|intcomma }}</p>
+                    <h4>Countries</h4>
+                    <h4 class="mb-4">
+                        {% for country in info.production_countries %}
+                            <span class="badge badge-secondary">{{ country.name }}</span>
+                        {% endfor %}
+                    </h4>
+                    <button class="btn btn-success">Save</button>
+                </form>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col mt-5">
+                <div id="carouselImages" class="carousel slide" data-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for image in images.backdrops %}
+                            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                <img class="d-block w-100" src="https://image.tmdb.org/t/p/original{{ image.file_path }}">
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <a class="carousel-control-prev" href="#carouselImages" role="button" data-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                    <a class="carousel-control-next" href="#carouselImages" role="button" data-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col pt-5">
+                <div style="position: relative; width: 100%; height: 0; padding-bottom: 56.25%;">
+                    <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" src="https://www.youtube-nocookie.com/embed/{{ videos.results.0.key }}" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

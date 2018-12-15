@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}
+    Random movie
+{% endblock %}
+{% block content %}
+    <div class="container">
+        <div class="row mt-4">
+            {% include "movies/movie_preview.html" %}
+        </div>
+    </div>
+{% endblock %}
