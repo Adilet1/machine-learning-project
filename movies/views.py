@@ -1,55 +1,44 @@
 import random, json, urllib, numpy, pandas
+from datetime import datetime
 from django.urls import reverse
 from django.shortcuts import render, redirect
+from django.core.paginator import Paginator
 from django.views.generic.list import ListView
 from django.views.generic.detail import DetailView
 from .models import Movie
 from .recommender import getRecommendations
+from .network import NeuralNetwork
 
 ratings = {}
-ratings[0] = {}
+ratings[0] = {1: 4, 3: 4, 6: 4, 47: 5}
 updated = False
+network = None
+movie_vectors = []
+scores = []
 
-# def sigmoid(x):
-#     return 1.0/(1+ np.exp(-x))
-
-# def sigmoid_derivative(x):
-#     return x * (1.0 - x)
-
-# class NeuralNetwork:
-#     def __init__(self, x, y):
-#         self.input      = x
-#         self.weights1   = np.random.rand(self.input.shape[1],4) 
-#         self.weights2   = np.random.rand(4,1)                 
-#         self.y          = y
-#         self.output     = np.zeros(self.y.shape)
-
-#     def feedforward(self):
-#         self.layer1 = sigmoid(np.dot(self.input, self.weights1))
-#         self.output = sigmoid(np.dot(self.layer1, self.weights2))
-
-#     def backprop(self):
-#         d_weights2 = np.dot(self.layer1.T, (2*(self.y - self.output) * sigmoid_derivative(self.output)))
-#         d_weights1 = np.dot(self.input.T,  (np.dot(2*(self.y - self.output) * sigmoid_derivative(self.output), self.weights2.T) * sigmoid_derivative(self.layer1)))
-
-#         self.weights1 += d_weights1
-#         self.weights2 += d_weights2
+def get_movie_vector(movie):
+    release_date = movie.info['release_date'].split('-')
+    movie_info = [int(release_date[0]), int(release_date[1]), int(release_date[2]), int(movie.info['runtime']), int(movie.info['budget']), int(movie.info['revenue']), int(movie.info['popularity']), int(movie.info['vote_average'])]
+    return movie_info
 
 def recommend_movie(request):
-    # data = pandas.read_csv('data/movies.csv', sep=',')
-    # for i in range(int(data.size / 3)):
-    #     row = data.iloc[i]
-    #     print(row['movieId'], row['title'])
-    #     movie = Movie(id=row['movieId'], name=row['title'])
-    #     movie.save()
-    # data = pandas.read_csv('data/links.csv', sep=',')
-    # for i in range(int(data.size / 3)):
-    #     row = data.iloc[i]
-    #     print(row['movieId'], row['tmdbId'])
-    #     movie = Movie.objects.get(id=row['movieId'])
-    #     if pandas.isna(row['tmdbId']) == False:
-    #         movie.tmdb_id = int(row['tmdbId'])
-    #         movie.save()
+    movies = Movie.objects.all()
+    if len(movies) == 0:
+        data = pandas.read_csv('data/movies.csv', sep=',')
+        for i in range(int(data.size / 3)):
+            row = data.iloc[i]
+            print(row['movieId'], row['title'])
+            movie = Movie(id=row['movieId'], name=row['title'])
+            movie.save()
+        data = pandas.read_csv('data/links.csv', sep=',')
+        for i in range(int(data.size / 3)):
+            row = data.iloc[i]
+            print(row['movieId'], row['tmdbId'])
+            movie = Movie.objects.get(id=row['movieId'])
+            if pandas.isna(row['tmdbId']) == False:
+                movie.tmdb_id = int(row['tmdbId'])
+                movie.save()
+
     global updated
 
     if updated == False:
@@ -64,17 +53,33 @@ def recommend_movie(request):
         updated = True
 
     didRecommend = False
+    movie_list = []
+    movies = []
     if len(ratings[0]) != 0:
-        recommendation = getRecommendations(ratings, 0)
-        if len(recommendation) > 0:
-            movie = Movie.objects.get(id=recommendation[0][1])
+        recommendations = getRecommendations(ratings, 0)
+        if len(recommendations) > 0:
             didRecommend = True
-    if didRecommend == False:
-        movie = random.choice(Movie.objects.all())
-    with urllib.request.urlopen('https://api.themoviedb.org/3/movie/' + str(movie.tmdb_id) + '?api_key=1b5adf76a72a13bad99b8fc0c68cb085') as url:
-        api_data = json.loads(url.read().decode())
-        movie.info = api_data
-    return render(request, 'recommend.html', {'didRecommend': didRecommend, 'movie': movie})
+            recommendations = recommendations[0:5]
+            for recommendation in recommendations:
+                movie = Movie.objects.get(id=int(recommendation[1]))
+                movie.rating = recommendation[0]
+                movie_list.append(movie)
+    for movie in movie_list:
+        try:
+            with urllib.request.urlopen('https://api.themoviedb.org/3/movie/' + str(movie.tmdb_id) + '?api_key=1b5adf76a72a13bad99b8fc0c68cb085') as url:
+                api_data = json.loads(url.read().decode())
+                movie.info = api_data
+                movies.append(movie)
+        except urllib.error.HTTPError:
+            print(movie.tmdb_id)
+    if network:
+        for movie in movies:
+            movie_vector = get_movie_vector(movie)
+            network.input = [movie_vector]
+            network.feedforward()
+            movie.score = network.output[0][0]
+            network.input = movie_vectors
+    return render(request, 'recommend.html', {'didRecommend': didRecommend, 'movies': movies})
 
 def random_movie(request):
     movie = random.choice(Movie.objects.all())
@@ -84,7 +89,24 @@ def random_movie(request):
     return render(request, 'random.html', {'movie': movie})
 
 def rate(request, pk):
+    global network, movie_vectors, scores
     ratings[0][pk] = int(request.POST['rating'])
+    movie = Movie.objects.get(id=pk)
+    with urllib.request.urlopen('https://api.themoviedb.org/3/movie/' + str(movie.tmdb_id) + '?api_key=1b5adf76a72a13bad99b8fc0c68cb085') as url:
+        api_data = json.loads(url.read().decode())
+        movie.info = api_data
+    movie_vector = get_movie_vector(movie)
+    movie_vectors.append(movie_vector)
+    score = 0
+    if ratings[0][pk] >= 3:
+        score = 1
+    scores.append([score])
+    print(movie_vectors)
+    print(scores)
+    network = NeuralNetwork(numpy.array(movie_vectors), numpy.array(scores))
+    for i in range(2000):
+        network.feedforward()
+        network.backprop()
     return redirect('recommend')
 
 def search(request):
@@ -96,18 +118,16 @@ def search(request):
             movie.info = api_data
     return render(request, 'search.html', {'query': query, 'movies': movies})
 
-class MovieListView(ListView):
-    model = Movie
-    paginate_by = 10
-    context_object_name = 'movies'
-
-    def get_queryset(self):
-        movies = Movie.objects.all()
-        for movie in movies:
-            with urllib.request.urlopen('https://api.themoviedb.org/3/movie/' + str(movie.tmdb_id) + '?api_key=1b5adf76a72a13bad99b8fc0c68cb085') as url:
-                api_data = json.loads(url.read().decode())
-                movie.info = api_data
-        return movies
+def list_movies(request):
+    movies_list = Movie.objects.all()
+    paginator = Paginator(movies_list, 5)
+    page = request.GET.get('page')
+    movies = paginator.get_page(page)
+    for movie in movies:
+        with urllib.request.urlopen('https://api.themoviedb.org/3/movie/' + str(movie.tmdb_id) + '?api_key=1b5adf76a72a13bad99b8fc0c68cb085') as url:
+            api_data = json.loads(url.read().decode())
+            movie.info = api_data
+    return render(request, 'movies/movie_list.html', {'movies': movies})
 
 class MovieDetailView(DetailView):
     model = Movie

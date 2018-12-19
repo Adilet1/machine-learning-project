@@ -3,8 +3,8 @@
     Search
 {% endblock %}
 {% block content %}
-    <div class="container">
-        <h3 class="my-3">Search: "{{ query }}"</h3>
+    <div class="container mt-4">
+        <h3 class="mb-3">Search: "{{ query }}"</h3>
         {% for movie in movies %}
             <div class="row">
                 {% include "movies/movie_preview.html" %}

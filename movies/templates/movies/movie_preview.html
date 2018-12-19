@@ -23,7 +23,7 @@
                         <img class="w-100 rounded" src="https://image.tmdb.org/t/p/w600_and_h900_bestv2{{ movie.info.poster_path }}">
                     </div>
                     <div class="col">
-                        <h5 class="card-title">{{ movie.info.title }}</h5>
+                        <h5 class="card-title">{{ movie.info.title }}{% if movie.score %} ({{ movie.score }}){% endif %} {% if movie.rating %}<span style="float: right;">{{ movie.rating|floatformat:"-2" }}/5</span>{% endif %}</h5>
                         <p class="card-text">{{ movie.info.overview }}</p>
                     </div>
                 </div>

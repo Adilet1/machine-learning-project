@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 {% block title %}
-    Recommend movie
+    Movie recommendations
 {% endblock %}
 {% block content %}
     <div class="container">
         <div class="row mt-4">
             {% if didRecommend %}
-                {% include "movies/movie_preview.html" %}
+                {% for movie in movies %}
+                    {% include "movies/movie_preview.html" %}
+                {% endfor %}
             {% else %}
-                <h5>Sorry, we couldn't find relevant movie for you. Try to rate more movies.</h5>
+                <h5>Sorry, we couldn't find any relevant movies for you. Tell us more about your tastes.</h5>
             {% endif %}
         </div>
     </div>
