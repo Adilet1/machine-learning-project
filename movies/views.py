@@ -1,4 +1,4 @@
-import random, json, urllib, numpy, pandas
+import random, copy, json, urllib, numpy, pandas
 from datetime import datetime
 from django.urls import reverse
 from django.shortcuts import render, redirect
@@ -10,7 +10,7 @@ from .recommender import getRecommendations
 from .network import NeuralNetwork
 
 ratings = {}
-ratings[0] = {1: 4, 3: 4, 6: 4, 47: 5}
+ratings[0] = {}
 updated = False
 network = None
 movie_vectors = []
@@ -75,10 +75,10 @@ def recommend_movie(request):
     if network:
         for movie in movies:
             movie_vector = get_movie_vector(movie)
-            network.input = [movie_vector]
-            network.feedforward()
-            movie.score = network.output[0][0]
-            network.input = movie_vectors
+            net = copy.deepcopy(network)
+            net.input = numpy.array([movie_vector])
+            net.feedforward()
+            movie.score = net.output[0][0]
     return render(request, 'recommend.html', {'didRecommend': didRecommend, 'movies': movies})
 
 def random_movie(request):
@@ -101,8 +101,6 @@ def rate(request, pk):
     if ratings[0][pk] >= 3:
         score = 1
     scores.append([score])
-    print(movie_vectors)
-    print(scores)
     network = NeuralNetwork(numpy.array(movie_vectors), numpy.array(scores))
     for i in range(2000):
         network.feedforward()
